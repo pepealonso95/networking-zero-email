@@ -1,0 +1,66 @@
+---
+description: 
+globs: 
+alwaysApply: false
+---
+{
+  "rules": [
+    {
+      "description": "Utilize Tailwind CSS v4 and shadcn/ui for UI development with comprehensive configuration",
+      "match": ["*"],
+      "actions": [
+        {
+          "type": "setDocumentation",
+          "value": [
+            "https://tailwindcss.com/docs",
+            "https://ui.shadcn.com/docs",
+            "https://tailwindcss.com/docs/v4-beta",
+            "https://react.dev/reference/react"
+          ]
+        },
+        {
+          "type": "setStyleGuide",
+          "value": {
+            "framework": "Next.js",
+            "language": "TypeScript",
+            "cssFramework": "Tailwind CSS v4",
+            "uiLibrary": "shadcn/ui",
+            "routing": "React Router",
+            "bundler": "Vite"
+          }
+        },
+        {
+          "type": "setBestPractices",
+          "value": {
+            "componentStructure": "Use functional components with TypeScript interfaces. Separate concerns between logic, styling, and state management.",
+            "styling": "Apply Tailwind utility classes directly in TSX. Use the @theme directive in globals.css for custom design tokens. Leverage CSS variables for theming support.",
+            "theming": "Utilize the @theme directive with CSS custom properties for consistent theming. Support both light and dark modes using CSS variables.",
+            "accessibility": "Ensure all interactive elements are accessible and follow ARIA guidelines. Use semantic HTML elements.",
+            "imports": "Use path aliases (@/components, @/lib, @/hooks) for clean imports. Import shadcn/ui components from @/components/ui.",
+            "stateManagement": "Use React hooks for local state, Zustand for global state when needed.",
+            "errorHandling": "Implement proper error boundaries and loading states for better UX."
+          }
+        },
+        {
+          "type": "setPatterns",
+          "value": {
+            "tailwindConfig": "Use @theme directive in globals.css instead of tailwind.config.js for Tailwind v4",
+            "customColors": "Define custom colors in @theme block using CSS custom properties",
+            "components": "Create reusable components in @/components with proper TypeScript interfaces",
+            "utils": "Use @/lib/utils for utility functions, especially cn() for conditional classes",
+            "animations": "Define custom animations in globals.css using @keyframes and Tailwind classes"
+          }
+        },
+        {
+          "type": "setConventions",
+          "value": {
+            "fileNaming": "Use kebab-case for component files, PascalCase for component names",
+            "classOrdering": "Follow Tailwind's recommended class order: layout, flexbox, spacing, sizing, typography, colors, effects",
+            "componentProps": "Use TypeScript interfaces for component props with descriptive names",
+            "cssVariables": "Use hsl() values for colors to support transparency variations"
+          }
+        }
+      ]
+    }
+  ]
+}

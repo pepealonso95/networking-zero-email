@@ -1,0 +1,698 @@
+@import '@fontsource-variable/geist';
+@import '@fontsource-variable/geist-mono';
+@import "tailwindcss";
+
+/* Tailwind CSS v4 Configuration */
+@theme {
+  --font-sans: 'Geist Variable', ui-sans-serif, system-ui, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
+  --font-mono: 'Geist Mono Variable', ui-monospace, SFMono-Regular, "SF Mono", Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+
+  /* Set all border radius values to 0 to remove curves */
+  --radius: 0px;
+  --radius-lg: 0px;
+  --radius-md: 0px;
+  --radius-sm: 0px;
+  --radius-xl: 0px;
+  --radius-2xl: 0px;
+  --radius-full: 0px;
+}
+
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
+}
+
+@layer base {
+  :root {
+    --font-geist-sans: 'Geist Variable', sans-serif;
+    --font-geist-mono: 'Geist Mono Variable', monospace;
+    --background: 0 0% 100%;
+    --foreground: 240 10% 3.9%;
+    --card: 0 0% 100%;
+    --card-foreground: 240 10% 3.9%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 240 10% 3.9%;
+    --primary: 240 5.9% 10%;
+    --primary-foreground: 0 0% 98%;
+    --secondary: 240 4.8% 95.9%;
+    --secondary-foreground: 240 5.9% 10%;
+    --muted: 240 4.8% 95.9%;
+    --muted-foreground: 240 3.8% 46.1%;
+    --accent: 240 4.8% 95.9%;
+    --accent-foreground: 240 5.9% 10%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 240 5.9% 90%;
+    --input: 240 5.9% 90%;
+    --ring: 240 10% 3.9%;
+    --chart-1: 12 76% 61%;
+    --chart-2: 173 58% 39%;
+    --chart-3: 197 37% 24%;
+    --chart-4: 43 74% 66%;
+    --chart-5: 27 87% 67%;
+    --radius: 0.5rem;
+    --sidebar-background: 0 0% 98%;
+    --sidebar-foreground: 240 5.3% 26.1%;
+    --sidebar-primary: 240 5.9% 10%;
+    --sidebar-primary-foreground: 0 0% 98%;
+    --sidebar-accent: 240 4.8% 95.9%;
+    --sidebar-accent-foreground: 240 5.9% 10%;
+    --sidebar-border: 220 13% 91%;
+    --sidebar-ring: 217.2 91.2% 59.8%;
+    --icon-color: black;
+  }
+
+  .dark {
+    --background: 240 5.9% 10%;
+    --foreground: 0 0% 98%;
+    --card: 240 5.9% 10%;
+    --card-foreground: 0 0% 98%;
+    --popover: 240 3.4% 8%;
+    --popover-foreground: 0 0% 99%;
+    --primary: 0 0% 98%;
+    --primary-foreground: 240 5.9% 10%;
+    --secondary: 240 3.7% 15.9%;
+    --secondary-foreground: 0 0% 98%;
+    --muted: 240 3.7% 15.9%;
+    --muted-foreground: 240 5% 64.9%;
+    --accent: 240 3.7% 15.9%;
+    --accent-foreground: 0 0% 98%;
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 240 3.7% 20%;
+    --input: 240 3.7% 15.9%;
+    --ring: 240 4.9% 83.9%;
+    --chart-1: 220 70% 50%;
+    --chart-2: 160 60% 45%;
+    --chart-3: 30 80% 55%;
+    --chart-4: 280 65% 60%;
+    --chart-5: 340 75% 55%;
+    --sidebar-background: 240 3.9% 7%;
+    --sidebar-foreground: 240 4.8% 96.9%;
+    --sidebar-primary: 224.3 76.3% 48%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 240 3.7% 15.9%;
+    --sidebar-accent-foreground: 240 4.8% 95.9%;
+    --sidebar-border: 240 3.7% 15.9%;
+    --sidebar-ring: 217.2 91.2% 59.8%;
+    --icon-color: currentColor;
+  }
+}
+
+@layer base {
+  * {
+    border-color: hsl(var(--border));
+  }
+
+  body {
+    background-color: hsl(var(--background));
+    color: hsl(var(--foreground));
+    font-family: 'Geist Variable', ui-sans-serif, system-ui, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
+    overscroll-behavior: none;
+    scrollbar-width: thin;
+    scrollbar-color: hsl(var(--accent)) transparent;
+  }
+
+  body::-webkit-scrollbar {
+    width: 6px;
+  }
+
+  body::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  body::-webkit-scrollbar-thumb {
+    background-color: hsl(var(--accent));
+    border-radius: 3px;
+  }
+
+  body::-webkit-scrollbar-thumb:hover {
+    background-color: hsl(var(--accent) / 0.8);
+  }
+}
+
+/* Custom keyframes and animations */
+@keyframes fade-up {
+  0% {
+    transform: translateY(10px);
+  }
+  100% {
+    transform: translateY(0);
+  }
+}
+
+@keyframes moveUp {
+  0% {
+    transform: translateY(90px);
+    opacity: 0;
+  }
+  100% {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+@keyframes fadeIn {
+  0% {
+    opacity: 0;
+  }
+  100% {
+    opacity: 1;
+  }
+}
+
+@keyframes shine {
+  from {
+    background-position: 200% 0;
+  }
+  to {
+    background-position: -200% 0;
+  }
+}
+
+@keyframes shine-slow {
+  from {
+    background-position: 200% 0;
+  }
+  to {
+    background-position: -200% 0;
+  }
+}
+
+@keyframes accordion-down {
+  from {
+    height: 0;
+  }
+  to {
+    height: var(--radix-accordion-content-height);
+  }
+}
+
+@keyframes accordion-up {
+  from {
+    height: var(--radix-accordion-content-height);
+  }
+  to {
+    height: 0;
+  }
+}
+
+@keyframes gauge_fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes gauge_fill {
+  from { stroke-dashoffset: 332; opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+@layer utilities {
+  .animate-fade-up {
+    animation: fade-up 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  }
+
+  .animate-move-up {
+    animation: moveUp 3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  }
+
+  .animate-fade-in {
+    animation: fadeIn 3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  }
+
+  .animate-shine {
+    animation: shine 4s linear infinite;
+  }
+
+  .animate-shine-slow {
+    animation: shine-slow 8s linear infinite;
+  }
+
+  .animate-accordion-down {
+    animation: accordion-down 0.2s ease-out;
+  }
+
+  .animate-accordion-up {
+    animation: accordion-up 0.2s ease-out;
+  }
+
+  .animate-gauge_fadeIn {
+    animation: gauge_fadeIn 1s ease forwards;
+  }
+
+  .animate-gauge_fill {
+    animation: gauge_fill 1s ease forwards;
+  }
+}
+
+.skeleton {
+  * {
+    pointer-events: none !important;
+  }
+
+  *[class^='text-'] {
+    color: transparent;
+    background-color: hsl(var(--foreground) / 0.2);
+    animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+    user-select: none;
+    border-radius: 0.375rem;
+  }
+
+  .skeleton-bg {
+    background-color: hsl(var(--foreground) / 0.1);
+  }
+
+  .skeleton-div {
+    background-color: hsl(var(--foreground) / 0.2);
+    animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  }
+}
+
+.ProseMirror {
+  outline: none;
+}
+
+.cm-editor,
+.cm-gutters {
+  background-color: hsl(var(--background)) !important;
+  outline: none !important;
+}
+
+.cm-editor::selection,
+.cm-gutters::selection {
+  background-color: hsl(var(--accent)) !important;
+}
+
+.ͼo.cm-focused > .cm-scroller > .cm-selectionLayer .cm-selectionBackground,
+.ͼo.cm-selectionBackground,
+.ͼo.cm-content::selection {
+  background-color: hsl(var(--accent)) !important;
+}
+
+.cm-activeLine,
+.cm-activeLineGutter {
+  background-color: transparent !important;
+}
+
+.cm-activeLine {
+  border-top-right-radius: 0.125rem !important;
+  border-bottom-right-radius: 0.125rem !important;
+}
+
+.cm-lineNumbers {
+  min-width: 1.75rem;
+}
+
+.cm-foldGutter {
+  min-width: 0.75rem;
+}
+
+.cm-lineNumbers .cm-activeLineGutter {
+  border-top-left-radius: 0.125rem !important;
+  border-bottom-left-radius: 0.125rem !important;
+}
+
+.suggestion-highlight {
+  background-color: hsl(var(--accent));
+  color: hsl(var(--accent-foreground));
+}
+
+.suggestion-highlight:hover {
+  background-color: hsl(var(--accent) / 0.8);
+}
+
+.dark [data-hide-on-theme='dark'],
+.light [data-hide-on-theme='light'] {
+  display: none;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  ::view-transition-new(theme-transition) {
+    clip-path: inset(0 0 100% 0);
+    animation: slide-in-from-top 0.65s forwards cubic-bezier(0.65, 0, 0.35, 1);
+  }
+
+  ::view-transition-old(theme-transition) {
+    animation: none;
+  }
+
+  @keyframes slide-in-from-top {
+    to {
+      clip-path: inset(0 0 0 0);
+    }
+  }
+}
+
+/* Compose gradient styles */
+@keyframes gradient-flow {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+.compose-loading {
+  background: #016ffe;
+  animation: none;
+}
+
+.compose-gradient-animated {
+  background: linear-gradient(270deg, #016ffe, #32d2fe, #39cfff, #4cc7f5, #6dc2eb, #95b9e0, #c8b0d4);
+  background-size: 1400% 1400%;
+  animation: gradient-flow 4s ease infinite;
+}
+
+@keyframes gradient-animation {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+@keyframes fadeInUp {
+  0% {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.compose-gradient-text {
+  background: linear-gradient(270deg, #016ffe, #32d2fe, #39cfff, #4cc7f5, #6dc2eb, #95b9e0, #c8b0d4);
+  background-size: 1400% 1400%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: gradient-animation 4s ease infinite;
+}
+
+.compose-gradient-text-shiny {
+  background: linear-gradient(90deg, transparent, #016ffe, transparent);
+  background-size: 200% 100%;
+  background-clip: text;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-color: #016ffe;
+  position: relative;
+  overflow: hidden;
+}
+
+.compose-gradient-text-shiny::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.4), transparent);
+  animation: shine 2s infinite;
+}
+
+.compose-gradient-inner {
+  background: linear-gradient(270deg, #016ffe, #32d2fe, #39cfff, #4cc7f5, #6dc2eb, #95b9e0, #c8b0d4);
+  background-size: 1400% 1400%;
+  animation: gradient-animation 4s ease infinite;
+}
+
+@keyframes blink {
+  0%,
+  50% {
+    opacity: 1;
+  }
+  51%,
+  100% {
+    opacity: 0;
+  }
+}
+
+.animate-blink {
+  animation: blink 1s infinite;
+}
+
+.tiptap p {
+  margin: 0;
+}
+
+/* Ensure TipTap editor text is visible */
+.tiptap {
+  color: #374151 !important; /* gray-700 for light mode - better contrast */
+}
+
+.dark .tiptap {
+  color: #f3f4f6 !important; /* gray-100 for dark mode - better contrast */
+}
+
+/* Fix placeholder text visibility */
+.tiptap p.is-editor-empty:first-child::before {
+  color: #9ca3af !important; /* gray-400 */
+}
+
+.dark .tiptap p.is-editor-empty:first-child::before {
+  color: #9ca3af !important; /* gray-400 - same for both modes */
+}
+
+/* Override bg-card forcing for AI chat input areas */
+.ai-chat-input-area {
+  background-color: white !important;
+}
+
+.dark .ai-chat-input-area {
+  background-color: hsl(240 5.9% 10%) !important; /* same as website background */
+}
+
+.ai-chat-container {
+  background-color: rgb(249, 250, 251) !important; /* gray-50 */
+}
+
+.dark .ai-chat-container {
+  background-color: hsl(240 5.9% 6%) !important; /* darker than website background */
+}
+
+/* Fix example query buttons for proper light/dark mode */
+.ai-chat-example-button {
+  background-color: rgb(243, 244, 246) !important; /* gray-100 for light mode */
+  color: rgb(107, 114, 128) !important; /* gray-500 for light mode */
+}
+
+.dark .ai-chat-example-button {
+  background-color: hsl(240 3.7% 15.9%) !important; /* muted background for dark mode */
+  color: rgb(209, 213, 219) !important; /* gray-300 for dark mode */
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.style-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: hsl(var(--accent)) transparent;
+}
+
+.style-scrollbar::-webkit-scrollbar {
+  width: 6px;
+}
+
+.style-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.style-scrollbar::-webkit-scrollbar-thumb {
+  background-color: hsl(var(--accent));
+  border-radius: 3px;
+}
+
+.style-scrollbar::-webkit-scrollbar-thumb:hover {
+  background-color: hsl(var(--accent) / 0.8);
+}
+
+/* Fix Radix UI popper content wrapper styling */
+[data-radix-popper-content-wrapper] {
+  background-color: transparent !important;
+}
+
+/* Ensure popover content has proper background */
+[data-radix-popper-content-wrapper] [role="dialog"],
+[data-radix-popper-content-wrapper] [data-radix-popover-content] {
+  background-color: hsl(var(--popover)) !important;
+  color: hsl(var(--popover-foreground)) !important;
+  border: 1px solid hsl(var(--border)) !important;
+}
+
+/* Fix any Radix dropdown menu dark backgrounds */
+[data-radix-popper-content-wrapper] [data-radix-dropdown-menu-content] {
+  background-color: hsl(var(--popover)) !important;
+  color: hsl(var(--popover-foreground)) !important;
+  border: 1px solid hsl(var(--border)) !important;
+}
+
+/* Fix sidebar and data-side popups specifically */
+[data-side] {
+  background-color: hsl(var(--popover)) !important;
+  color: hsl(var(--popover-foreground)) !important;
+  border: 1px solid hsl(var(--border)) !important;
+}
+
+/* Target any Radix primitive that might have dark backgrounds */
+[data-radix-collection-item],
+[data-radix-menubar-content],
+[data-radix-dropdown-menu-item],
+[data-radix-context-menu-content],
+[data-radix-tooltip-content] {
+  background-color: hsl(var(--popover)) !important;
+  color: hsl(var(--popover-foreground)) !important;
+}
+
+/* Ensure all Radix popper-positioned content uses correct colors */
+[data-radix-popper-content-wrapper] * {
+  --tw-bg-opacity: 1 !important;
+}
+
+/* Override any dark mode backgrounds that might be stuck */
+.light [data-radix-popper-content-wrapper],
+.light [data-side] {
+  background-color: white !important;
+  color: black !important;
+}
+
+/* Force icon contrast in light mode popovers and tooltips */
+.light [data-radix-popper-content-wrapper] svg,
+.light [data-side] svg,
+.light [data-radix-tooltip-content] svg,
+.light [role="tooltip"] svg {
+  fill: #4b5563 !important; /* gray-600 */
+}
+
+/* Force icon contrast in dark mode popovers and tooltips */
+.dark [data-radix-popper-content-wrapper] svg,
+.dark [data-side] svg,
+.dark [data-radix-tooltip-content] svg,
+.dark [role="tooltip"] svg {
+  fill: white !important;
+}
+
+/* Force contrast for any collapsed/icon-only states */
+[data-state="collapsed"] svg,
+[data-collapsible="icon"] svg {
+  fill: hsl(var(--foreground)) !important;
+}
+
+/* Override muted foreground in light mode for better contrast */
+.light svg[class*="fill-muted-foreground"] {
+  fill: #4b5563 !important; /* gray-600 */
+}
+
+/* Ensure white fill in dark mode */
+.dark svg[class*="fill-muted-foreground"] {
+  fill: white !important;
+}
+
+/* Force category button icon contrast - most specific targeting */
+.light button[data-slot="tooltip-trigger"] svg,
+.light .bg-white svg.fill-gray-600 {
+  fill: #374151 !important; /* gray-700 for better contrast */
+}
+
+.dark button[data-slot="tooltip-trigger"] svg,
+.dark .dark\\:bg-muted svg {
+  fill: white !important;
+}
+
+/* Force any gray-600 class to actually be visible in light mode */
+.light svg.fill-gray-600 {
+  fill: #374151 !important; /* gray-700 */
+}
+
+/* Ensure category icons in buttons are visible */
+.light button svg[class*="fill-gray-600"] {
+  fill: #374151 !important; /* gray-700 */
+}
+
+/* Fix button backgrounds for category buttons */
+.dark button[data-slot="tooltip-trigger"].bg-white,
+.dark .bg-white[data-slot="tooltip-trigger"] {
+  background-color: hsl(var(--muted)) !important;
+}
+
+.dark button[data-slot="tooltip-trigger"]:hover.hover\\:bg-gray-100 {
+  background-color: hsl(var(--muted) / 0.8) !important;
+}
+
+/* Ensure all category button backgrounds work in dark mode */
+.dark button[class*="bg-white"] {
+  background-color: hsl(var(--muted)) !important;
+}
+
+.dark button[class*="hover:bg-gray-100"]:hover {
+  background-color: hsl(var(--muted) / 0.8) !important;
+}
+
+/* Target specific Tag icon for promotions if needed */
+.light svg[viewBox*="14 14"] {
+  fill: #374151 !important; /* gray-700 for Tag icons */
+}
+
+/* Fix icons where fill class is on path element instead of svg */
+.light svg path[class*="fill-gray-600"],
+.light path.fill-gray-600 {
+  fill: #374151 !important; /* gray-700 */
+}
+
+.dark svg path[class*="fill-gray-600"],
+.dark path.fill-gray-600 {
+  fill: white !important;
+}
+
+/* More aggressive button background override for dark mode */
+.dark .rounded-lg.border[class*="bg-white"] {
+  background-color: hsl(var(--muted)) !important;
+}
+
+/* Force proper backgrounds on all category selection buttons */
+[class*="CategorySelect"] .dark button.bg-white,
+.dark button.bg-white.rounded-lg {
+  background-color: hsl(var(--muted)) !important;
+}
+
+/* Ensure compose components have completely solid backgrounds */
+.bg-card {
+  background-color: hsl(var(--card)) !important;
+  opacity: 1 !important;
+}
+
+/* Force solid backgrounds for compose areas */
+.email-composer-solid,
+.email-composer-solid * {
+  backdrop-filter: none !important;
+  background-color: hsl(var(--card)) !important;
+  opacity: 1 !important;
+}
+
+
