@@ -43,6 +43,17 @@ export const defaultUserSettings = {
   trustedSenders: [],
   isOnboarded: false,
   colorTheme: 'system',
+  leadGeneration: {
+    hunterApiKey: '',
+    apolloApiKey: '',
+    snovApiKey: '',
+    pdlApiKey: '',
+    linkedinSalesNavCookie: '',
+    linkedinAlternativeApiKey: '',
+    linkedinAlternativeProvider: 'scrap_in' as 'scrap_in' | 'bright_data' | 'apollo',
+    defaultSearchLimit: 10,
+    enableAutoEnrichment: true,
+  },
 } satisfies UserSettings;
 
 export const userSettingsSchema = z.object({
@@ -54,6 +65,17 @@ export const userSettingsSchema = z.object({
   isOnboarded: z.boolean().optional(),
   trustedSenders: z.string().array().optional(),
   colorTheme: z.enum(['light', 'dark', 'system']).default('system'),
+  leadGeneration: z.object({
+    hunterApiKey: z.string().optional(),
+    apolloApiKey: z.string().optional(),
+    snovApiKey: z.string().optional(),
+    pdlApiKey: z.string().optional(),
+    linkedinSalesNavCookie: z.string().optional(),
+    linkedinAlternativeApiKey: z.string().optional(),
+    linkedinAlternativeProvider: z.enum(['scrap_in', 'bright_data', 'apollo']).default('scrap_in'),
+    defaultSearchLimit: z.number().min(1).max(50).default(10),
+    enableAutoEnrichment: z.boolean().default(true),
+  }).optional(),
 });
 
 export type UserSettings = z.infer<typeof userSettingsSchema>;

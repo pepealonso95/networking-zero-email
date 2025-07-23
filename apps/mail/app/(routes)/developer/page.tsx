@@ -61,7 +61,7 @@ const developerResources = [
     icon: Webhook,
     href: '/webhooks',
     linkText: 'Configure',
-    color: 'text-orange-500',
+    color: 'text-black',
     bgColor: 'bg-orange-500/10',
   },
 ] as const;

@@ -1,6 +1,8 @@
 import {
   Archive,
   Bin,
+  Calendar,
+  Clock,
   ExclamationCircle,
   Folder,
   Inbox,
@@ -79,6 +81,25 @@ export const navigationConfig: Record<string, NavConfig> = {
         ],
       },
       {
+        title: 'Calendar',
+        items: [
+          {
+            id: 'calendar',
+            title: 'navigation.sidebar.calendar',
+            url: '/calendar',
+            icon: Calendar,
+            shortcut: 'g + c',
+          },
+          {
+            id: 'availability',
+            title: 'navigation.sidebar.availability',
+            url: '/calendar/availability',
+            icon: Clock,
+            shortcut: 'g + a',
+          },
+        ],
+      },
+      {
         title: 'Networking',
         items: [
           {
@@ -87,6 +108,13 @@ export const navigationConfig: Record<string, NavConfig> = {
             url: '/crm',
             icon: Users,
             shortcut: 'g + n',
+          },
+          {
+            id: 'leads',
+            title: 'navigation.sidebar.leads',
+            url: '/leads',
+            icon: Sparkles,
+            shortcut: 'g + l',
           },
         ],
       },
@@ -195,6 +223,11 @@ export const navigationConfig: Record<string, NavConfig> = {
             url: '/settings/shortcuts',
             icon: Tabs,
             shortcut: '?',
+          },
+          {
+            title: 'navigation.settings.leads',
+            url: '/settings/leads',
+            icon: Sparkles,
           },
           // {
           //   title: 'navigation.settings.signatures',

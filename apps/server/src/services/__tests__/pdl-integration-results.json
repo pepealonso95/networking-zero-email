@@ -1,0 +1,81 @@
+{
+  "testPrompt": "find stanford graduates in tech in san francisco",
+  "timestamp": "2025-07-22T22:18:56.709Z",
+  "aiParsedCriteria": {
+    "query": {
+      "bool": {
+        "must": [
+          {
+            "match": {
+              "education.school.name": "stanford"
+            }
+          },
+          {
+            "bool": {
+              "should": [
+                {
+                  "term": {
+                    "job_company_industry": "computer software"
+                  }
+                },
+                {
+                  "term": {
+                    "job_company_industry": "information technology and services"
+                  }
+                },
+                {
+                  "term": {
+                    "job_company_industry": "internet"
+                  }
+                }
+              ]
+            }
+          },
+          {
+            "match": {
+              "location_locality": "san francisco"
+            }
+          }
+        ]
+      }
+    },
+    "size": 10,
+    "reasoning": "The query extracts 'stanford graduates' to filter by education.school.name containing 'stanford', 'in tech' to specify industries related to technology (e.g., computer software, information technology and services, internet), and 'in san francisco' to constrain the geographic location.",
+    "alternative_queries": [
+      {
+        "query": {
+          "bool": {
+            "must": [
+              {
+                "match": {
+                  "education.school.name": "stanford"
+                }
+              },
+              {
+                "wildcard": {
+                  "job_title": "*tech*"
+                }
+              },
+              {
+                "match": {
+                  "location_locality": "san francisco"
+                }
+              }
+            ]
+          }
+        },
+        "reasoning": "This alternative query uses a wildcard on job_title to capture a broader tech-related term while still filtering for Stanford education and the San Francisco area."
+      }
+    ]
+  },
+  "pdlSearchResults": [],
+  "resultCount": 0,
+  "summary": {
+    "aiParsingWorked": true,
+    "pdlSearchWorked": true,
+    "foundResults": false,
+    "hasStanfordGrads": false,
+    "hasTechWorkers": false,
+    "hasSFLocation": false
+  }
+}

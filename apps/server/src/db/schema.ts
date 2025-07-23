@@ -260,3 +260,143 @@ export const contactEmailSync = createTable('contact_email_sync', {
 }, (t) => [
   unique().on(t.contactId, t.userId),
 ]);
+
+// Lead generation tables
+export const lead = createTable('lead', {
+  id: text('id').primaryKey(),
+  userId: text('user_id')
+    .notNull()
+    .references(() => user.id, { onDelete: 'cascade' }),
+  email: text('email').notNull(), // Required - we only save leads with emails
+  firstName: text('first_name'),
+  lastName: text('last_name'),
+  fullName: text('full_name'),
+  company: text('company'),
+  jobTitle: text('job_title'),
+  linkedinUrl: text('linkedin_url'),
+  phoneNumber: text('phone_number'),
+  location: text('location'),
+  source: text('source').$type<'hunter' | 'apollo' | 'snov' | 'pdl' | 'linkedin_official' | 'linkedin_sales_nav' | 'linkedin_scraping' | 'linkedin_alternative' | 'manual'>().notNull(),
+  confidence: integer('confidence'), // 0-100 confidence score
+  verified: boolean('verified').default(false),
+  addedToCrm: boolean('added_to_crm').default(false),
+  contactId: text('contact_id').references(() => contact.id, { onDelete: 'set null' }), // If converted to contact
+  countryOfOrigin: text('country_of_origin'), // Inferred country of origin
+  educationHistory: jsonb('education_history'), // Array of education records
+  workHistory: jsonb('work_history'), // Array of work experience records
+  inferredOrigin: jsonb('inferred_origin'), // Origin inference data with confidence
+  metadata: jsonb('metadata'), // Store additional data from APIs
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+  updatedAt: timestamp('updated_at').notNull().defaultNow(),
+}, (t) => [
+  unique().on(t.userId, t.email),
+]);
+
+export const leadSearch = createTable('lead_search', {
+  id: text('id').primaryKey(),
+  userId: text('user_id')
+    .notNull()
+    .references(() => user.id, { onDelete: 'cascade' }),
+  originalPrompt: text('original_prompt').notNull(),
+  processedCriteria: jsonb('processed_criteria'), // AI-processed search criteria
+  resultsCount: integer('results_count').default(0),
+  apiUsage: jsonb('api_usage'), // Track usage per service: {hunter: 5, apollo: 10}
+  status: text('status').$type<'pending' | 'processing' | 'completed' | 'failed'>().default('pending'),
+  error: text('error'), // Store error message if failed
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+  completedAt: timestamp('completed_at'),
+});
+
+// Calendar tables
+export const calendarEvent = createTable('calendar_event', {
+  id: text('id').primaryKey(),
+  userId: text('user_id')
+    .notNull()
+    .references(() => user.id, { onDelete: 'cascade' }),
+  googleEventId: text('google_event_id'), // Google Calendar event ID for sync
+  calendarId: text('calendar_id'), // Google Calendar ID
+  title: text('title').notNull(),
+  description: text('description'),
+  location: text('location'),
+  startTime: timestamp('start_time').notNull(),
+  endTime: timestamp('end_time').notNull(),
+  isAllDay: boolean('is_all_day').default(false),
+  timeZone: text('time_zone').default('UTC'),
+  source: text('source').$type<'google' | 'zero' | 'booking'>().notNull().default('zero'),
+  meetingLink: text('meeting_link'), // Google Meet or other meeting links
+  attendees: jsonb('attendees'), // Array of attendee objects {email, name, status}
+  recurrence: jsonb('recurrence'), // Recurrence rules
+  status: text('status').$type<'confirmed' | 'tentative' | 'cancelled'>().default('confirmed'),
+  visibility: text('visibility').$type<'public' | 'private'>().default('private'),
+  lastSyncAt: timestamp('last_sync_at'),
+  metadata: jsonb('metadata'), // Additional Google Calendar metadata
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+  updatedAt: timestamp('updated_at').notNull().defaultNow(),
+}, (t) => [
+  unique().on(t.userId, t.googleEventId),
+]);
+
+export const availabilitySlot = createTable('availability_slot', {
+  id: text('id').primaryKey(),
+  userId: text('user_id')
+    .notNull()
+    .references(() => user.id, { onDelete: 'cascade' }),
+  title: text('title').notNull(), // e.g., "30-min Meeting", "Coffee Chat"
+  description: text('description'),
+  duration: integer('duration').notNull(), // Duration in minutes
+  dayOfWeek: integer('day_of_week').notNull(), // 0-6 (Sunday-Saturday)
+  startTime: text('start_time').notNull(), // Format: "HH:MM"
+  endTime: text('end_time').notNull(), // Format: "HH:MM"
+  timeZone: text('time_zone').notNull().default('UTC'),
+  buffer: integer('buffer').default(0), // Buffer time between meetings in minutes
+  maxBookings: integer('max_bookings').default(1), // Max bookings per slot
+  isActive: boolean('is_active').default(true),
+  allowWeekends: boolean('allow_weekends').default(false),
+  bookingWindow: integer('booking_window').default(30), // Days in advance bookings allowed
+  meetingType: text('meeting_type').$type<'google-meet' | 'phone' | 'in-person' | 'custom'>().default('google-meet'),
+  questions: jsonb('questions'), // Array of custom questions for bookers
+  autoConfirm: boolean('auto_confirm').default(true),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+  updatedAt: timestamp('updated_at').notNull().defaultNow(),
+});
+
+export const meetingRequest = createTable('meeting_request', {
+  id: text('id').primaryKey(),
+  userId: text('user_id')
+    .notNull()
+    .references(() => user.id, { onDelete: 'cascade' }),
+  availabilitySlotId: text('availability_slot_id')
+    .notNull()
+    .references(() => availabilitySlot.id, { onDelete: 'cascade' }),
+  bookerName: text('booker_name').notNull(),
+  bookerEmail: text('booker_email').notNull(),
+  bookerPhone: text('booker_phone'),
+  requestedTime: timestamp('requested_time').notNull(),
+  duration: integer('duration').notNull(),
+  timeZone: text('time_zone').notNull(),
+  message: text('message'), // Optional message from booker
+  responses: jsonb('responses'), // Answers to custom questions
+  status: text('status').$type<'pending' | 'confirmed' | 'cancelled' | 'completed'>().default('pending'),
+  eventId: text('event_id').references(() => calendarEvent.id, { onDelete: 'set null' }), // Created event after confirmation
+  cancellationReason: text('cancellation_reason'),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+  confirmedAt: timestamp('confirmed_at'),
+  cancelledAt: timestamp('cancelled_at'),
+});
+
+export const calendarSync = createTable('calendar_sync', {
+  id: text('id').primaryKey(),
+  userId: text('user_id')
+    .notNull()
+    .references(() => user.id, { onDelete: 'cascade' })
+    .unique(),
+  googleCalendarId: text('google_calendar_id'), // Primary calendar ID
+  syncToken: text('sync_token'), // Google Calendar sync token
+  lastSyncAt: timestamp('last_sync_at'),
+  lastFullSyncAt: timestamp('last_full_sync_at'),
+  syncStatus: text('sync_status').$type<'active' | 'paused' | 'error'>().default('active'),
+  syncError: text('sync_error'), // Last sync error message
+  settings: jsonb('settings'), // User calendar sync preferences
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+  updatedAt: timestamp('updated_at').notNull().defaultNow(),
+});

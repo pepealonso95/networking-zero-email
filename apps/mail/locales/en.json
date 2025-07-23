@@ -336,10 +336,13 @@
       "inbox": "Inbox",
       "drafts": "Drafts",
       "sent": "Sent",
+      "calendar": "Calendar",
+      "availability": "Availability",
       "spam": "Spam",
       "archive": "Archive",
       "bin": "Bin",
       "networking": "Networking",
+      "leads": "Find Leads",
       "feedback": "Feedback",
       "settings": "Settings"
     },
@@ -351,6 +354,7 @@
       "signatures": "Signatures",
       "shortcuts": "Shortcuts",
       "labels": "Labels",
+      "leads": "Lead Generation",
       "dangerZone": "Danger Zone",
       "deleteAccount": "Delete Account",
       "privacy": "Privacy"

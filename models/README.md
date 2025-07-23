@@ -1,3 +1,15 @@
+# ⚡️ Fork Notice
+
+This repository is a **fork of the original [0.email](https://github.com/0email/0.email) project**. It has been adapted and extended for networking email tools and custom machine learning models for email classification.
+
+## Key Differences from 0.email
+- Focus on networking email workflows and tools.
+- Custom-trained machine learning models for email classification (see below).
+- Additional scripts for data processing and model training.
+- Excludes original proprietary or sensitive data/models; all models here are trained on user-provided or public data.
+
+---
+
 # 🤖 Modelos Entrenados
 
 ## Descripción

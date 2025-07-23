@@ -16,6 +16,7 @@ export default [
   route('/api/mailto-handler', 'mailto-handler.ts'),
   route('/og-api/home', 'og-api/home.tsx'),
   route('/og-api/create', 'og-api/create.tsx'),
+  route('/book/:slotId', 'book/[slotId]/page.tsx'),
 
   layout('(full-width)/layout.tsx', [
     route('/about', '(full-width)/about.tsx'),
@@ -47,6 +48,13 @@ export default [
         ...prefix('/crm', [
           index('(routes)/crm/page.tsx'),
         ]),
+        ...prefix('/leads', [
+          index('(routes)/leads/page.tsx'),
+        ]),
+        ...prefix('/calendar', [
+          index('(routes)/calendar/page.tsx'),
+          route('/availability', '(routes)/calendar/availability/page.tsx'),
+        ]),
       ]
     ),
     layout(
@@ -62,6 +70,7 @@ export default [
         route('/privacy', '(routes)/settings/privacy/page.tsx'),
         route('/security', '(routes)/settings/security/page.tsx'),
         route('/shortcuts', '(routes)/settings/shortcuts/page.tsx'),
+        route('/leads', '(routes)/settings/leads/page.tsx'),
         route('/*', '(routes)/settings/[...settings]/page.tsx'),
       ]),
     ),
