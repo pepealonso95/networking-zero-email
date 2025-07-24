@@ -112,6 +112,14 @@ function LoginClientContent({ providers, isProd }: LoginClientProps) {
         signIn.social({
           provider: provider.id as any,
           callbackURL: `${window.location.origin}/mail`,
+          scopes: provider.id === 'google' ? [
+            'https://www.googleapis.com/auth/gmail.modify',
+            'https://www.googleapis.com/auth/userinfo.profile',
+            'https://www.googleapis.com/auth/userinfo.email',
+            'https://www.googleapis.com/auth/calendar',
+            'https://www.googleapis.com/auth/calendar.events',
+            'openid',
+          ] : undefined,
         }),
         {
           error: 'Login redirect failed',

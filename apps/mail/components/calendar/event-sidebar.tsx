@@ -6,6 +6,10 @@ import { X, Edit, Trash2, Video, MapPin, Users, Clock } from 'lucide-react';
 import { format } from 'date-fns';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
+import { useTRPC } from '@/providers/query-provider';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { toast } from 'sonner';
+import { EditEventDialog } from './edit-event-dialog';
 
 interface EventSidebarProps {
   eventId: string;
@@ -14,33 +18,36 @@ interface EventSidebarProps {
 }
 
 export function EventSidebar({ eventId, onClose, onEventUpdate }: EventSidebarProps) {
-  const [event, setEvent] = useState<any>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const trpc = useTRPC();
+  const queryClient = useQueryClient();
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [showEditDialog, setShowEditDialog] = useState(false);
+  
+  const { data: event, isLoading, error } = useQuery({
+    ...trpc.calendar.getEvent.queryOptions({ eventId }),
+    enabled: !!eventId,
+  });
 
-  useEffect(() => {
-    // TODO: Fetch event details
-    // For now, using mock data
-    setEvent({
-      id: eventId,
-      title: 'Team Meeting',
-      description: 'Weekly team sync to discuss project progress and upcoming milestones.',
-      startTime: new Date(),
-      endTime: new Date(Date.now() + 60 * 60 * 1000), // 1 hour later
-      location: 'Conference Room A',
-      meetingLink: 'https://meet.google.com/abc-defg-hij',
-      attendees: [
-        { email: 'john@example.com', name: 'John Doe', status: 'accepted' },
-        { email: 'jane@example.com', name: 'Jane Smith', status: 'tentative' },
-      ],
-      source: 'google',
-      status: 'confirmed',
-    });
-    setIsLoading(false);
-  }, [eventId]);
+  // Delete event mutation
+  const { mutateAsync: deleteEvent } = useMutation({
+    ...trpc.calendar.deleteEvent.mutationOptions(),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['calendar.getEvents'] });
+      toast.success('Event deleted successfully');
+      onEventUpdate();
+      onClose();
+    },
+    onError: (error: any) => {
+      console.error('Error deleting event:', error);
+      toast.error('Failed to delete event', {
+        description: error?.message || 'An unexpected error occurred'
+      });
+    },
+  });
 
   if (isLoading) {
     return (
-      <div className="w-80 border-l bg-background p-4">
+      <div className="border rounded-lg bg-card p-4 h-full">
         <div className="animate-pulse space-y-4">
           <div className="h-4 bg-muted rounded w-3/4"></div>
           <div className="h-20 bg-muted rounded"></div>
@@ -49,9 +56,19 @@ export function EventSidebar({ eventId, onClose, onEventUpdate }: EventSidebarPr
     );
   }
 
+  if (error) {
+    return (
+      <div className="border rounded-lg bg-card p-4 h-full">
+        <div className="text-center text-muted-foreground">
+          Error loading event: {error.message}
+        </div>
+      </div>
+    );
+  }
+
   if (!event) {
     return (
-      <div className="w-80 border-l bg-background p-4">
+      <div className="border rounded-lg bg-card p-4 h-full">
         <div className="text-center text-muted-foreground">
           Event not found
         </div>
@@ -59,15 +76,32 @@ export function EventSidebar({ eventId, onClose, onEventUpdate }: EventSidebarPr
     );
   }
 
+  const handleEdit = () => {
+    setShowEditDialog(true);
+  };
+
   const handleDelete = async () => {
-    // TODO: Implement delete functionality
-    console.log('Delete event:', eventId);
-    onEventUpdate();
-    onClose();
+    if (!event) return;
+    
+    // Show confirmation
+    if (!confirm(`Are you sure you want to delete "${event.title}"? This action cannot be undone.`)) {
+      return;
+    }
+
+    setIsDeleting(true);
+    try {
+      await deleteEvent({ eventId: eventId });
+    } catch (error) {
+      // Error handling is done in the mutation onError callback
+      console.error('Delete failed:', error);
+    } finally {
+      setIsDeleting(false);
+    }
   };
 
   return (
-    <div className="w-80 border-l bg-background flex flex-col">
+    <>
+      <div className="border rounded-lg bg-card flex flex-col h-full">
       {/* Header */}
       <div className="flex items-center justify-between p-4 border-b">
         <h3 className="font-semibold">Event Details</h3>
@@ -77,7 +111,7 @@ export function EventSidebar({ eventId, onClose, onEventUpdate }: EventSidebarPr
       </div>
 
       {/* Content */}
-      <div className="flex-1 overflow-auto p-4 space-y-4">
+      <div className="flex-1 overflow-y-auto p-4 space-y-4">
         {/* Title and source */}
         <div className="space-y-2">
           <h2 className="text-lg font-semibold">{event.title}</h2>
@@ -160,7 +194,11 @@ export function EventSidebar({ eventId, onClose, onEventUpdate }: EventSidebarPr
 
       {/* Actions */}
       <div className="border-t p-4 space-y-2">
-        <Button className="w-full gap-2">
+        <Button 
+          className="w-full gap-2"
+          onClick={handleEdit}
+          disabled={isDeleting}
+        >
           <Edit className="h-4 w-4" />
           Edit Event
         </Button>
@@ -168,11 +206,23 @@ export function EventSidebar({ eventId, onClose, onEventUpdate }: EventSidebarPr
           variant="destructive"
           className="w-full gap-2"
           onClick={handleDelete}
+          disabled={isDeleting}
         >
           <Trash2 className="h-4 w-4" />
-          Delete Event
+          {isDeleting ? 'Deleting...' : 'Delete Event'}
         </Button>
       </div>
-    </div>
+      </div>
+
+      {/* Edit Dialog */}
+      {event && (
+        <EditEventDialog
+          open={showEditDialog}
+          onOpenChange={setShowEditDialog}
+          event={event}
+          onEventUpdated={onEventUpdate}
+        />
+      )}
+    </>
   );
 }

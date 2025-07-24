@@ -695,4 +695,29 @@
   opacity: 1 !important;
 }
 
+/* Calendar date indicators */
+.calendar-today {
+  background-color: #ef4444 !important;
+  color: white !important;
+  border-radius: 50% !important;
+  font-weight: bold !important;
+}
+
+.calendar-selected {
+  background-color: white !important;
+  color: #374151 !important;
+  border: 2px solid #6b7280 !important;
+  border-radius: 50% !important;
+  font-weight: bold !important;
+}
+
+/* Handle both selected and today on the same date - today takes precedence but with white border */
+.calendar-today.calendar-selected {
+  background-color: #ef4444 !important;
+  color: white !important;
+  border: 2px solid white !important;
+  border-radius: 50% !important;
+  font-weight: bold !important;
+}
+
 

@@ -10,7 +10,7 @@ import { type Account, betterAuth, type BetterAuthOptions } from 'better-auth';
 import { createAuthMiddleware, phoneNumber } from 'better-auth/plugins';
 import { getBrowserTimezone, isValidTimezone } from './timezones';
 import { drizzleAdapter } from 'better-auth/adapters/drizzle';
-import { getSocialProviders } from './auth-providers';
+// import { getSocialProviders } from './auth-providers'; // No longer used
 import { redis, resend, twilio } from './services';
 import { getContext } from 'hono/context-storage';
 import { getActiveDriver } from './driver/utils';
@@ -66,13 +66,41 @@ const connectionHandlerHook = async (account: Account) => {
     throw new APIError('BAD_REQUEST', { message: 'Missing "email" in user info' });
   }
 
+  // Try to get scope from the account object first (from OAuth response),
+  // fallback to driver's getScope() method
+  const scope = (account as any).scope || driver.getScope();
+  
+  // Validate that we have the required calendar scopes
+  const requiredScopes = [
+    'https://www.googleapis.com/auth/calendar',
+    'https://www.googleapis.com/auth/calendar.events'
+  ];
+  
+  // Normalize scope string (handle both comma and space separated)
+  const normalizedScope = scope?.replace(/,/g, ' ') || '';
+  
+  const hasRequiredScopes = requiredScopes.every(requiredScope => 
+    normalizedScope.includes(requiredScope)
+  );
+  
+  if (!hasRequiredScopes) {
+    console.error('❌ Missing required calendar scopes:', {
+      receivedScope: scope,
+      requiredScopes,
+      providerId: account.providerId
+    });
+    throw new APIError('UNAUTHORIZED', { 
+      message: 'Calendar access not granted. Please reconnect and grant calendar permissions.' 
+    });
+  }
+
   const updatingInfo = {
     name: userInfo.name || 'Unknown',
     picture: userInfo.photo || '',
     accessToken: account.accessToken,
     refreshToken: account.refreshToken,
-    scope: driver.getScope(),
-    expiresAt: new Date(Date.now() + (account.accessTokenExpiresAt?.getTime() || 3600000)),
+    scope: normalizedScope, // Use normalized scope (space-separated)
+    expiresAt: account.accessTokenExpiresAt || new Date(Date.now() + 3600000), // 1 hour default
   };
 
   const connectionRecord = {
@@ -340,7 +368,23 @@ const createAuthConfig = () => {
       expiresIn: 60 * 60 * 24 * 7, // 7 days
       updateAge: 60 * 60 * 24, // 1 day (every 1 day the session expiration is updated)
     },
-    socialProviders: getSocialProviders(env as unknown as Record<string, string>),
+    socialProviders: {
+      google: {
+        clientId: env.GOOGLE_CLIENT_ID,
+        clientSecret: env.GOOGLE_CLIENT_SECRET,
+        scope: [
+          'https://www.googleapis.com/auth/gmail.modify',
+          'https://www.googleapis.com/auth/userinfo.profile',
+          'https://www.googleapis.com/auth/userinfo.email',
+          'https://www.googleapis.com/auth/calendar',
+          'https://www.googleapis.com/auth/calendar.events',
+          'openid',
+        ],
+        accessType: 'offline',
+        prompt: 'consent',
+        includeGrantedScopes: true,
+      },
+    },
     account: {
       accountLinking: {
         enabled: true,

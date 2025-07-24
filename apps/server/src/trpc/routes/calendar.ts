@@ -144,7 +144,9 @@ export const calendarRouter = router({
           if (googleConnection.length > 0 && googleConnection[0].accessToken) {
             const calendarService = new GoogleCalendarService(
               googleConnection[0].accessToken,
-              googleConnection[0].refreshToken || undefined
+              googleConnection[0].refreshToken || undefined,
+              googleConnection[0].expiresAt || undefined,
+              googleConnection[0].scope || undefined
             );
 
             const googleEvents = await calendarService.getEvents('primary', {
@@ -219,6 +221,105 @@ export const calendarRouter = router({
       return events;
     }),
 
+  // Get a specific event by ID
+  getEvent: privateProcedure
+    .input(z.object({
+      eventId: z.string(),
+    }))
+    .query(async ({ ctx, input }) => {
+      const { session, db } = ctx;
+      const user = session?.user;
+      if (!user) {
+        throw new TRPCError({
+          code: 'UNAUTHORIZED',
+          message: 'Please sign in to access your calendar',
+        });
+      }
+
+      // Check if it's a Google event ID (starts with 'google-')
+      const isGoogleEvent = input.eventId.startsWith('google-');
+      
+      if (isGoogleEvent) {
+        // For Google events, we need to find it in the current events or fetch from Google
+        const googleEventId = input.eventId.replace('google-', '');
+        
+        // Try to get Google connection and fetch the event
+        const googleConnection = await db.select()
+          .from(connection)
+          .where(
+            and(
+              eq(connection.userId, user.id),
+              eq(connection.providerId, 'google')
+            )
+          )
+          .limit(1);
+
+        if (googleConnection.length > 0 && googleConnection[0].accessToken) {
+          const calendarService = new GoogleCalendarService(
+            googleConnection[0].accessToken,
+            googleConnection[0].refreshToken || undefined,
+            googleConnection[0].expiresAt || undefined,
+            googleConnection[0].scope || undefined
+          );
+
+          try {
+            const googleEvent = await calendarService.getEvent('primary', googleEventId);
+            
+            // Convert Google event to our format
+            return {
+              id: `google-${googleEvent.id}`,
+              userId: user.id,
+              googleEventId: googleEvent.id,
+              calendarId: 'primary',
+              title: googleEvent.summary,
+              description: googleEvent.description || null,
+              location: googleEvent.location || null,
+              startTime: new Date(googleEvent.start.dateTime || googleEvent.start.date || ''),
+              endTime: new Date(googleEvent.end.dateTime || googleEvent.end.date || ''),
+              isAllDay: Boolean(googleEvent.start.date),
+              timeZone: googleEvent.start.timeZone || 'UTC',
+              source: 'google' as const,
+              meetingLink: googleEvent.conferenceData?.entryPoints?.[0]?.uri || null,
+              attendees: googleEvent.attendees || null,
+              recurrence: googleEvent.recurrence || null,
+              status: googleEvent.status || 'confirmed',
+              visibility: 'private' as const,
+              lastSyncAt: new Date(),
+              metadata: googleEvent,
+              createdAt: new Date(),
+              updatedAt: new Date(),
+            };
+          } catch (error) {
+            console.error('Error fetching Google event:', error);
+            throw new TRPCError({
+              code: 'NOT_FOUND',
+              message: 'Event not found',
+            });
+          }
+        }
+      } else {
+        // For local events, query the database
+        const [event] = await db.select()
+          .from(calendarEvent)
+          .where(
+            and(
+              eq(calendarEvent.id, input.eventId),
+              eq(calendarEvent.userId, user.id)
+            )
+          )
+          .limit(1);
+
+        if (event) {
+          return event;
+        }
+      }
+
+      throw new TRPCError({
+        code: 'NOT_FOUND',
+        message: 'Event not found',
+      });
+    }),
+
   // Create a new calendar event
   createEvent: privateProcedure
     .input(eventSchema)
@@ -247,7 +348,9 @@ export const calendarRouter = router({
         if (googleConnection.length > 0 && googleConnection[0].accessToken) {
           const calendarService = new GoogleCalendarService(
             googleConnection[0].accessToken,
-            googleConnection[0].refreshToken || undefined
+            googleConnection[0].refreshToken || undefined,
+            googleConnection[0].expiresAt || undefined,
+            googleConnection[0].scope || undefined
           );
 
           // Create event in Google Calendar with optional Google Meet
@@ -347,22 +450,14 @@ export const calendarRouter = router({
 
       const { eventId, ...updateData } = input;
 
-      // Get existing event
-      const [existingEvent] = await db.select()
-        .from(calendarEvent)
-        .where(
-          and(
-            eq(calendarEvent.id, eventId),
-            eq(calendarEvent.userId, user.id)
-          )
-        )
-        .limit(1);
-
-      if (!existingEvent) throw new Error('Event not found');
-
-      try {
-        // Update in Google Calendar if it exists there
-        if (existingEvent.googleEventId) {
+      // Check if it's a Google event ID (starts with 'google-')
+      const isGoogleEvent = eventId.startsWith('google-');
+      
+      if (isGoogleEvent) {
+        // For Google events, extract the actual Google event ID and update directly
+        const googleEventId = eventId.replace('google-', '');
+        
+        try {
           const googleConnection = await db.select()
             .from(connection)
             .where(
@@ -373,87 +468,232 @@ export const calendarRouter = router({
             )
             .limit(1);
 
-          if (googleConnection.length > 0 && googleConnection[0].accessToken) {
-            const calendarService = new GoogleCalendarService(
-              googleConnection[0].accessToken,
-              googleConnection[0].refreshToken || undefined
+          if (googleConnection.length === 0 || !googleConnection[0].accessToken) {
+            throw new TRPCError({
+              code: 'PRECONDITION_FAILED',
+              message: 'Google Calendar not connected. Please connect your Google account.',
+            });
+          }
+
+          const calendarService = new GoogleCalendarService(
+            googleConnection[0].accessToken,
+            googleConnection[0].refreshToken || undefined,
+            googleConnection[0].expiresAt || undefined,
+            googleConnection[0].scope || undefined
+          );
+
+          const updatedGoogleEvent = await calendarService.updateEvent('primary', googleEventId, {
+            summary: updateData.title,
+            description: updateData.description,
+            location: updateData.location,
+            start: updateData.startTime ? {
+              dateTime: updateData.isAllDay ? undefined : updateData.startTime,
+              date: updateData.isAllDay ? updateData.startTime.split('T')[0] : undefined,
+              timeZone: updateData.timeZone,
+            } : undefined,
+            end: updateData.endTime ? {
+              dateTime: updateData.isAllDay ? undefined : updateData.endTime,
+              date: updateData.isAllDay ? updateData.endTime.split('T')[0] : undefined,
+              timeZone: updateData.timeZone,
+            } : undefined,
+            attendees: updateData.attendees,
+          }, updateData.withMeet);
+
+          // Also try to update in local database if it exists (for synced events)
+          await db.update(calendarEvent)
+            .set({
+              ...(updateData.title && { title: updateData.title }),
+              ...(updateData.description !== undefined && { description: updateData.description }),
+              ...(updateData.location !== undefined && { location: updateData.location }),
+              ...(updateData.startTime && { startTime: new Date(updateData.startTime) }),
+              ...(updateData.endTime && { endTime: new Date(updateData.endTime) }),
+              ...(updateData.isAllDay !== undefined && { isAllDay: updateData.isAllDay }),
+              ...(updateData.timeZone && { timeZone: updateData.timeZone }),
+              ...(updateData.attendees !== undefined && { attendees: updateData.attendees }),
+              updatedAt: new Date(),
+            })
+            .where(
+              and(
+                eq(calendarEvent.googleEventId, googleEventId),
+                eq(calendarEvent.userId, user.id)
+              )
             );
 
-            await calendarService.updateEvent('primary', existingEvent.googleEventId, {
-              summary: updateData.title,
-              description: updateData.description,
-              location: updateData.location,
-              start: updateData.startTime ? {
-                dateTime: updateData.isAllDay ? undefined : updateData.startTime,
-                date: updateData.isAllDay ? updateData.startTime.split('T')[0] : undefined,
-                timeZone: updateData.timeZone,
-              } : undefined,
-              end: updateData.endTime ? {
-                dateTime: updateData.isAllDay ? undefined : updateData.endTime,
-                date: updateData.isAllDay ? updateData.endTime.split('T')[0] : undefined,
-                timeZone: updateData.timeZone,
-              } : undefined,
-              attendees: updateData.attendees,
-            }, updateData.withMeet);
-          }
-        }
-
-        // Update in local database
-        const [updatedEvent] = await db.update(calendarEvent)
-          .set({
-            ...(updateData.title && { title: updateData.title }),
-            ...(updateData.description !== undefined && { description: updateData.description }),
-            ...(updateData.location !== undefined && { location: updateData.location }),
-            ...(updateData.startTime && { startTime: new Date(updateData.startTime) }),
-            ...(updateData.endTime && { endTime: new Date(updateData.endTime) }),
-            ...(updateData.isAllDay !== undefined && { isAllDay: updateData.isAllDay }),
-            ...(updateData.timeZone && { timeZone: updateData.timeZone }),
-            ...(updateData.attendees !== undefined && { attendees: updateData.attendees }),
+          // Return the updated Google event in our format
+          return {
+            id: `google-${updatedGoogleEvent.id}`,
+            userId: user.id,
+            googleEventId: updatedGoogleEvent.id,
+            calendarId: 'primary',
+            title: updatedGoogleEvent.summary,
+            description: updatedGoogleEvent.description || null,
+            location: updatedGoogleEvent.location || null,
+            startTime: new Date(updatedGoogleEvent.start.dateTime || updatedGoogleEvent.start.date || ''),
+            endTime: new Date(updatedGoogleEvent.end.dateTime || updatedGoogleEvent.end.date || ''),
+            isAllDay: Boolean(updatedGoogleEvent.start.date),
+            timeZone: updatedGoogleEvent.start.timeZone || 'UTC',
+            source: 'google' as const,
+            meetingLink: updatedGoogleEvent.conferenceData?.entryPoints?.[0]?.uri || null,
+            attendees: updatedGoogleEvent.attendees || null,
+            recurrence: updatedGoogleEvent.recurrence || null,
+            status: updatedGoogleEvent.status || 'confirmed',
+            visibility: 'private' as const,
+            lastSyncAt: new Date(),
+            metadata: updatedGoogleEvent,
+            createdAt: new Date(),
             updatedAt: new Date(),
-          })
+          };
+        } catch (error) {
+          console.error('Error updating Google calendar event:', error);
+          if (error instanceof TRPCError) {
+            throw error;
+          }
+          if (error instanceof Error && (
+            error.message.includes('invalid_grant') || 
+            error.message.includes('unauthorized') ||
+            error.message.includes('Could not determine client ID') ||
+            error.message.includes('invalid_request')
+          )) {
+            // Clear invalid tokens from database
+            await db.update(connection)
+              .set({ 
+                accessToken: null, 
+                refreshToken: null,
+                updatedAt: new Date()
+              })
+              .where(
+                and(
+                  eq(connection.userId, user.id),
+                  eq(connection.providerId, 'google')
+                )
+              );
+            
+            throw new TRPCError({
+              code: 'UNAUTHORIZED',
+              message: 'Google Calendar access expired. Please reconnect your Google account.',
+            });
+          }
+          throw new TRPCError({
+            code: 'INTERNAL_SERVER_ERROR',
+            message: 'Failed to update calendar event',
+          });
+        }
+      } else {
+        // For local events, use the original logic
+        const [existingEvent] = await db.select()
+          .from(calendarEvent)
           .where(
             and(
               eq(calendarEvent.id, eventId),
               eq(calendarEvent.userId, user.id)
             )
           )
-          .returning();
+          .limit(1);
 
-        return updatedEvent;
-      } catch (error) {
-        console.error('Error updating calendar event:', error);
-        if (error instanceof TRPCError) {
-          throw error;
+        if (!existingEvent) {
+          throw new TRPCError({
+            code: 'NOT_FOUND',
+            message: 'Event not found',
+          });
         }
-        if (error instanceof Error && (
-          error.message.includes('invalid_grant') || 
-          error.message.includes('unauthorized') ||
-          error.message.includes('Could not determine client ID') ||
-          error.message.includes('invalid_request')
-        )) {
-          // Clear invalid tokens from database
-          await db.update(connection)
-            .set({ 
-              accessToken: null, 
-              refreshToken: null,
-              updatedAt: new Date()
+
+        try {
+          // Update in Google Calendar if it exists there
+          if (existingEvent.googleEventId) {
+            const googleConnection = await db.select()
+              .from(connection)
+              .where(
+                and(
+                  eq(connection.userId, user.id),
+                  eq(connection.providerId, 'google')
+                )
+              )
+              .limit(1);
+
+            if (googleConnection.length > 0 && googleConnection[0].accessToken) {
+              const calendarService = new GoogleCalendarService(
+                googleConnection[0].accessToken,
+                googleConnection[0].refreshToken || undefined,
+                googleConnection[0].expiresAt || undefined,
+                googleConnection[0].scope || undefined
+              );
+
+              await calendarService.updateEvent('primary', existingEvent.googleEventId, {
+                summary: updateData.title,
+                description: updateData.description,
+                location: updateData.location,
+                start: updateData.startTime ? {
+                  dateTime: updateData.isAllDay ? undefined : updateData.startTime,
+                  date: updateData.isAllDay ? updateData.startTime.split('T')[0] : undefined,
+                  timeZone: updateData.timeZone,
+                } : undefined,
+                end: updateData.endTime ? {
+                  dateTime: updateData.isAllDay ? undefined : updateData.endTime,
+                  date: updateData.isAllDay ? updateData.endTime.split('T')[0] : undefined,
+                  timeZone: updateData.timeZone,
+                } : undefined,
+                attendees: updateData.attendees,
+              }, updateData.withMeet);
+            }
+          }
+
+          // Update in local database
+          const [updatedEvent] = await db.update(calendarEvent)
+            .set({
+              ...(updateData.title && { title: updateData.title }),
+              ...(updateData.description !== undefined && { description: updateData.description }),
+              ...(updateData.location !== undefined && { location: updateData.location }),
+              ...(updateData.startTime && { startTime: new Date(updateData.startTime) }),
+              ...(updateData.endTime && { endTime: new Date(updateData.endTime) }),
+              ...(updateData.isAllDay !== undefined && { isAllDay: updateData.isAllDay }),
+              ...(updateData.timeZone && { timeZone: updateData.timeZone }),
+              ...(updateData.attendees !== undefined && { attendees: updateData.attendees }),
+              updatedAt: new Date(),
             })
             .where(
               and(
-                eq(connection.userId, user.id),
-                eq(connection.providerId, 'google')
+                eq(calendarEvent.id, eventId),
+                eq(calendarEvent.userId, user.id)
               )
-            );
-          
+            )
+            .returning();
+
+          return updatedEvent;
+        } catch (error) {
+          console.error('Error updating calendar event:', error);
+          if (error instanceof TRPCError) {
+            throw error;
+          }
+          if (error instanceof Error && (
+            error.message.includes('invalid_grant') || 
+            error.message.includes('unauthorized') ||
+            error.message.includes('Could not determine client ID') ||
+            error.message.includes('invalid_request')
+          )) {
+            // Clear invalid tokens from database
+            await db.update(connection)
+              .set({ 
+                accessToken: null, 
+                refreshToken: null,
+                updatedAt: new Date()
+              })
+              .where(
+                and(
+                  eq(connection.userId, user.id),
+                  eq(connection.providerId, 'google')
+                )
+              );
+            
+            throw new TRPCError({
+              code: 'UNAUTHORIZED',
+              message: 'Google Calendar access expired. Please reconnect your Google account.',
+            });
+          }
           throw new TRPCError({
-            code: 'UNAUTHORIZED',
-            message: 'Google Calendar access expired. Please reconnect your Google account.',
+            code: 'INTERNAL_SERVER_ERROR',
+            message: 'Failed to update calendar event',
           });
         }
-        throw new TRPCError({
-          code: 'INTERNAL_SERVER_ERROR',
-          message: 'Failed to update calendar event',
-        });
       }
     }),
 
@@ -466,22 +706,14 @@ export const calendarRouter = router({
       const { session, db } = ctx;
       const user = session.user;
 
-      // Get existing event
-      const [existingEvent] = await db.select()
-        .from(calendarEvent)
-        .where(
-          and(
-            eq(calendarEvent.id, input.eventId),
-            eq(calendarEvent.userId, user.id)
-          )
-        )
-        .limit(1);
-
-      if (!existingEvent) throw new Error('Event not found');
-
-      try {
-        // Delete from Google Calendar if it exists there
-        if (existingEvent.googleEventId) {
+      // Check if it's a Google event ID (starts with 'google-')
+      const isGoogleEvent = input.eventId.startsWith('google-');
+      
+      if (isGoogleEvent) {
+        // For Google events, extract the actual Google event ID and delete directly
+        const googleEventId = input.eventId.replace('google-', '');
+        
+        try {
           const googleConnection = await db.select()
             .from(connection)
             .where(
@@ -492,60 +724,156 @@ export const calendarRouter = router({
             )
             .limit(1);
 
-          if (googleConnection.length > 0 && googleConnection[0].accessToken) {
-            const calendarService = new GoogleCalendarService(
-              googleConnection[0].accessToken,
-              googleConnection[0].refreshToken || undefined
+          if (googleConnection.length === 0 || !googleConnection[0].accessToken) {
+            throw new TRPCError({
+              code: 'PRECONDITION_FAILED',
+              message: 'Google Calendar not connected. Please connect your Google account.',
+            });
+          }
+
+          const calendarService = new GoogleCalendarService(
+            googleConnection[0].accessToken,
+            googleConnection[0].refreshToken || undefined,
+            googleConnection[0].expiresAt || undefined,
+            googleConnection[0].scope || undefined
+          );
+
+          await calendarService.deleteEvent('primary', googleEventId);
+
+          // Also try to delete from local database if it exists (for synced events)
+          await db.delete(calendarEvent)
+            .where(
+              and(
+                eq(calendarEvent.googleEventId, googleEventId),
+                eq(calendarEvent.userId, user.id)
+              )
             );
 
-            await calendarService.deleteEvent('primary', existingEvent.googleEventId);
+          return { success: true };
+        } catch (error) {
+          console.error('Error deleting Google calendar event:', error);
+          if (error instanceof TRPCError) {
+            throw error;
           }
+          if (error instanceof Error && (
+            error.message.includes('invalid_grant') || 
+            error.message.includes('unauthorized') ||
+            error.message.includes('Could not determine client ID') ||
+            error.message.includes('invalid_request')
+          )) {
+            // Clear invalid tokens from database
+            await db.update(connection)
+              .set({ 
+                accessToken: null, 
+                refreshToken: null,
+                updatedAt: new Date()
+              })
+              .where(
+                and(
+                  eq(connection.userId, user.id),
+                  eq(connection.providerId, 'google')
+                )
+              );
+            
+            throw new TRPCError({
+              code: 'UNAUTHORIZED',
+              message: 'Google Calendar access expired. Please reconnect your Google account.',
+            });
+          }
+          throw new TRPCError({
+            code: 'INTERNAL_SERVER_ERROR',
+            message: 'Failed to delete calendar event',
+          });
         }
-
-        // Delete from local database
-        await db.delete(calendarEvent)
+      } else {
+        // For local events, use the original logic
+        const [existingEvent] = await db.select()
+          .from(calendarEvent)
           .where(
             and(
               eq(calendarEvent.id, input.eventId),
               eq(calendarEvent.userId, user.id)
             )
-          );
+          )
+          .limit(1);
 
-        return { success: true };
-      } catch (error) {
-        console.error('Error deleting calendar event:', error);
-        if (error instanceof TRPCError) {
-          throw error;
-        }
-        if (error instanceof Error && (
-          error.message.includes('invalid_grant') || 
-          error.message.includes('unauthorized') ||
-          error.message.includes('Could not determine client ID') ||
-          error.message.includes('invalid_request')
-        )) {
-          // Clear invalid tokens from database
-          await db.update(connection)
-            .set({ 
-              accessToken: null, 
-              refreshToken: null,
-              updatedAt: new Date()
-            })
-            .where(
-              and(
-                eq(connection.userId, user.id),
-                eq(connection.providerId, 'google')
-              )
-            );
-          
+        if (!existingEvent) {
           throw new TRPCError({
-            code: 'UNAUTHORIZED',
-            message: 'Google Calendar access expired. Please reconnect your Google account.',
+            code: 'NOT_FOUND',
+            message: 'Event not found',
           });
         }
-        throw new TRPCError({
-          code: 'INTERNAL_SERVER_ERROR',
-          message: 'Failed to delete calendar event',
-        });
+
+        try {
+          // Delete from Google Calendar if it exists there
+          if (existingEvent.googleEventId) {
+            const googleConnection = await db.select()
+              .from(connection)
+              .where(
+                and(
+                  eq(connection.userId, user.id),
+                  eq(connection.providerId, 'google')
+                )
+              )
+              .limit(1);
+
+            if (googleConnection.length > 0 && googleConnection[0].accessToken) {
+              const calendarService = new GoogleCalendarService(
+                googleConnection[0].accessToken,
+                googleConnection[0].refreshToken || undefined,
+                googleConnection[0].expiresAt || undefined,
+                googleConnection[0].scope || undefined
+              );
+
+              await calendarService.deleteEvent('primary', existingEvent.googleEventId);
+            }
+          }
+
+          // Delete from local database
+          await db.delete(calendarEvent)
+            .where(
+              and(
+                eq(calendarEvent.id, input.eventId),
+                eq(calendarEvent.userId, user.id)
+              )
+            );
+
+          return { success: true };
+        } catch (error) {
+          console.error('Error deleting calendar event:', error);
+          if (error instanceof TRPCError) {
+            throw error;
+          }
+          if (error instanceof Error && (
+            error.message.includes('invalid_grant') || 
+            error.message.includes('unauthorized') ||
+            error.message.includes('Could not determine client ID') ||
+            error.message.includes('invalid_request')
+          )) {
+            // Clear invalid tokens from database
+            await db.update(connection)
+              .set({ 
+                accessToken: null, 
+                refreshToken: null,
+                updatedAt: new Date()
+              })
+              .where(
+                and(
+                  eq(connection.userId, user.id),
+                  eq(connection.providerId, 'google')
+                )
+              );
+            
+            throw new TRPCError({
+              code: 'UNAUTHORIZED',
+              message: 'Google Calendar access expired. Please reconnect your Google account.',
+            });
+          }
+          throw new TRPCError({
+            code: 'INTERNAL_SERVER_ERROR',
+            message: 'Failed to delete calendar event',
+          });
+        }
       }
     }),
 
@@ -741,7 +1069,8 @@ export const calendarRouter = router({
       try {
         const calendarService = new GoogleCalendarService(
           googleConnection[0].accessToken,
-          googleConnection[0].refreshToken || undefined
+          googleConnection[0].refreshToken || undefined,
+          googleConnection[0].expiresAt || undefined
         );
 
         // Get or create sync record

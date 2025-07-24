@@ -115,6 +115,14 @@ export const AddConnectionDialog = ({
                       await authClient.linkSocial({
                         provider: provider.providerId,
                         callbackURL: `${window.location.origin}${pathname}`,
+                        scopes: provider.providerId === 'google' ? [
+                          'https://www.googleapis.com/auth/gmail.modify',
+                          'https://www.googleapis.com/auth/userinfo.profile',
+                          'https://www.googleapis.com/auth/userinfo.email',
+                          'https://www.googleapis.com/auth/calendar',
+                          'https://www.googleapis.com/auth/calendar.events',
+                          'openid',
+                        ] : undefined,
                       });
                     } catch (error) {
                       console.error('❌ Link social error:', error);

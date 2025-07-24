@@ -3,8 +3,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Calendar } from '@/components/ui/calendar';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, Settings, Clock } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, Settings, Clock, PanelRightClose, PanelRightOpen, ChevronDown, ChevronUp } from 'lucide-react';
 import { WeekView, type WeekViewRef } from './week-view';
 import { MonthView } from './month-view';
 import { EventSidebar } from './event-sidebar';
@@ -12,7 +11,7 @@ import { CalendarSettings } from './calendar-settings';
 import { CalendarAuthError } from './calendar-auth-error';
 import { useTRPC } from '@/providers/query-provider';
 import { useQuery } from '@tanstack/react-query';
-import { format, addWeeks, subWeeks, startOfWeek, endOfWeek, addMonths, subMonths, startOfMonth, endOfMonth } from 'date-fns';
+import { format, addWeeks, subWeeks, startOfWeek, endOfWeek, addMonths, subMonths, startOfMonth, endOfMonth, isToday } from 'date-fns';
 import { cn } from '@/lib/utils';
 
 type ViewType = 'week' | 'month';
@@ -22,6 +21,8 @@ export function CalendarView() {
   const [viewType, setViewType] = useState<ViewType>('week');
   const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
   const [showSettings, setShowSettings] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [dateNavCollapsed, setDateNavCollapsed] = useState(false);
   const weekViewRef = useRef<WeekViewRef>(null);
   const trpc = useTRPC();
 
@@ -84,6 +85,15 @@ export function CalendarView() {
       weekViewRef.current.scrollToCurrentTime();
     }
   };
+
+  // Auto-collapse date navigation when event is selected, expand when no event
+  useEffect(() => {
+    if (selectedEventId) {
+      setDateNavCollapsed(true);
+    } else {
+      setDateNavCollapsed(false);
+    }
+  }, [selectedEventId]);
 
   // Format header title based on view type
   const getHeaderTitle = () => {
@@ -168,26 +178,16 @@ export function CalendarView() {
               </Button>
             </div>
 
-            {/* Mini Calendar Picker */}
-            <Popover>
-              <PopoverTrigger asChild>
-                <Button
-                  variant="outline"
-                  size="icon"
-                  className="h-8 w-8"
-                >
-                  <CalendarIcon className="h-4 w-4" />
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-auto p-0" align="end">
-                <Calendar
-                  mode="single"
-                  selected={currentDate}
-                  onSelect={(date) => date && setCurrentDate(date)}
-                  initialFocus
-                />
-              </PopoverContent>
-            </Popover>
+            
+            <Button
+              variant="outline"
+              size="icon"
+              onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
+              className="h-8 w-8"
+              title={sidebarCollapsed ? 'Show sidebar' : 'Hide sidebar'}
+            >
+              {sidebarCollapsed ? <PanelRightOpen className="h-4 w-4" /> : <PanelRightClose className="h-4 w-4" />}
+            </Button>
             
             <Button
               variant="outline"
@@ -249,14 +249,61 @@ export function CalendarView() {
         </div>
       </div>
 
-      {/* Event sidebar */}
-      {selectedEventId && (
-        <div className="ml-6">
-          <EventSidebar
-            eventId={selectedEventId}
-            onClose={() => setSelectedEventId(null)}
-            onEventUpdate={refetchEvents}
-          />
+      {/* Right sidebar with date picker and event details */}
+      {!sidebarCollapsed && (
+        <div className="ml-6 flex flex-col w-80 min-h-0">
+          {/* Collapsible Date Picker */}
+          <div className="border rounded-lg bg-card mb-4 shrink-0">
+            <div 
+              className="flex items-center justify-between p-4 cursor-pointer hover:bg-muted/30 transition-colors rounded-t-lg border-b border-border/10"
+              onClick={() => setDateNavCollapsed(!dateNavCollapsed)}
+            >
+              <h3 className="font-semibold text-sm select-none">Date Navigation</h3>
+              <div className={`transition-transform duration-200 ease-in-out ${
+                dateNavCollapsed ? 'rotate-0' : 'rotate-180'
+              }`}>
+                <ChevronDown className="h-4 w-4" />
+              </div>
+            </div>
+            <div className={`overflow-hidden transition-all duration-300 ease-in-out ${
+              dateNavCollapsed ? 'max-h-0' : 'max-h-96'
+            }`}>
+              <div className="px-4 pb-4">
+                <Calendar
+                  mode="single"
+                  selected={currentDate}
+                  onSelect={(date) => date && setCurrentDate(date)}
+                  className="w-full"
+                  modifiers={{
+                    today: (date) => isToday(date),
+                    selected: (date) => format(date, 'yyyy-MM-dd') === format(currentDate, 'yyyy-MM-dd'),
+                  }}
+                  modifiersClassNames={{
+                    today: 'calendar-today',
+                    selected: 'calendar-selected'
+                  }}
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Event Details */}
+          {selectedEventId ? (
+            <div className="flex-1 min-h-0 overflow-hidden">
+              <EventSidebar
+                eventId={selectedEventId}
+                onClose={() => setSelectedEventId(null)}
+                onEventUpdate={refetchEvents}
+              />
+            </div>
+          ) : (
+            <div className="flex-1 border rounded-lg bg-card p-4 min-h-0">
+              <div className="flex flex-col items-center justify-center h-32 text-center text-muted-foreground">
+                <CalendarIcon className="h-8 w-8 mb-2 opacity-50" />
+                <p className="text-sm">Select an event to view details</p>
+              </div>
+            </div>
+          )}
         </div>
       )}
 

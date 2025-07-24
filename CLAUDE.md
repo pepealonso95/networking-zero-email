@@ -36,6 +36,9 @@
 - Added Zero Email credit link to sidebar
 - Vector database: Cloudflare Vectorize for email embeddings
 
+### Development Startup
+- remember, the code should one be started with ./scripts/dev-clean.sh
+
 ## Lead Generation Feature Implementation
 - Goal: User-controlled lead generation with o3-mini AI processing
 - Free APIs: Hunter.io, Apollo.io, Snov.io, PDL (user provides keys)

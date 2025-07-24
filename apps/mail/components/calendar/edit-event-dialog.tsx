@@ -14,15 +14,14 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { authClient } from '@/lib/auth-client';
 
-interface CreateEventDialogProps {
+interface EditEventDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  initialStartTime?: Date;
-  initialEndTime?: Date;
-  onEventCreated?: () => void;
+  event: any; // The event to edit
+  onEventUpdated?: () => void;
 }
 
-export function CreateEventDialog({ open, onOpenChange, initialStartTime, initialEndTime, onEventCreated }: CreateEventDialogProps) {
+export function EditEventDialog({ open, onOpenChange, event, onEventUpdated }: EditEventDialogProps) {
   const [formData, setFormData] = useState({
     title: '',
     description: '',
@@ -38,32 +37,45 @@ export function CreateEventDialog({ open, onOpenChange, initialStartTime, initia
 
   const trpc = useTRPC();
   const queryClient = useQueryClient();
-  const [isCreating, setIsCreating] = useState(false);
+  const [isUpdating, setIsUpdating] = useState(false);
 
-  // Update form data when initial times are provided
+  // Update form data when event changes
   useEffect(() => {
-    if (initialStartTime && initialEndTime && open) {
-      setFormData(prev => ({
-        ...prev,
-        startDate: format(initialStartTime, 'yyyy-MM-dd'),
-        startTime: format(initialStartTime, 'HH:mm'),
-        endDate: format(initialEndTime, 'yyyy-MM-dd'),
-        endTime: format(initialEndTime, 'HH:mm'),
-      }));
-    }
-  }, [initialStartTime, initialEndTime, open]);
+    if (event && open) {
+      const startDate = new Date(event.startTime);
+      const endDate = new Date(event.endTime);
+      
+      // Format attendees for display
+      const attendeesString = event.attendees 
+        ? event.attendees.map((a: any) => a.email || a.name).join(', ')
+        : '';
 
-  const { mutateAsync: createEvent } = useMutation({
-    ...trpc.calendar.createEvent.mutationOptions(),
+      setFormData({
+        title: event.title || '',
+        description: event.description || '',
+        location: event.location || '',
+        startDate: format(startDate, 'yyyy-MM-dd'),
+        startTime: event.isAllDay ? '00:00' : format(startDate, 'HH:mm'),
+        endDate: format(endDate, 'yyyy-MM-dd'),
+        endTime: event.isAllDay ? '23:59' : format(endDate, 'HH:mm'),
+        isAllDay: event.isAllDay || false,
+        withMeet: !!event.meetingLink,
+        attendees: attendeesString,
+      });
+    }
+  }, [event, open]);
+
+  const { mutateAsync: updateEvent } = useMutation({
+    ...trpc.calendar.updateEvent.mutationOptions(),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['calendar.getEvents'] });
-      toast.success('Event created successfully');
-      onEventCreated?.();
+      queryClient.invalidateQueries({ queryKey: ['calendar.getEvent'] });
+      toast.success('Event updated successfully');
+      onEventUpdated?.();
       onOpenChange(false);
-      resetForm();
     },
     onError: (error: any) => {
-      console.error('Error creating event:', error);
+      console.error('Error updating event:', error);
       if (error?.message?.includes('Google Calendar access expired') || error?.message?.includes('reconnect')) {
         toast.error('Google Calendar access expired', {
           description: 'Please reconnect your Google account',
@@ -78,7 +90,9 @@ export function CreateEventDialog({ open, onOpenChange, initialStartTime, initia
           },
         });
       } else {
-        toast.error('Failed to create event');
+        toast.error('Failed to update event', {
+          description: error?.message || 'An unexpected error occurred'
+        });
       }
     },
   });
@@ -106,10 +120,15 @@ export function CreateEventDialog({ open, onOpenChange, initialStartTime, initia
       return;
     }
 
-    setIsCreating(true);
+    if (!event) {
+      toast.error('No event to update');
+      return;
+    }
+
+    setIsUpdating(true);
 
     try {
-      // Parse attendees
+      // Parse attendees  
       const attendeesList = formData.attendees
         .split(',')
         .map(email => email.trim())
@@ -125,7 +144,8 @@ export function CreateEventDialog({ open, onOpenChange, initialStartTime, initia
         ? `${formData.endDate}T23:59:59.999Z`
         : `${formData.endDate}T${formData.endTime}:00.000Z`;
 
-      const eventData = {
+      const updateData = {
+        eventId: event.id,
         title: formData.title,
         description: formData.description || undefined,
         location: formData.location || undefined,
@@ -137,22 +157,27 @@ export function CreateEventDialog({ open, onOpenChange, initialStartTime, initia
         withMeet: formData.withMeet,
       };
 
-      await createEvent(eventData);
+      await updateEvent(updateData);
     } catch (error) {
       // Error handling is done in the mutation onError callback
-      console.error('Event creation failed:', error);
+      console.error('Event update failed:', error);
     } finally {
-      setIsCreating(false);
+      setIsUpdating(false);
     }
   };
 
+  const handleClose = () => {
+    onOpenChange(false);
+    resetForm();
+  };
+
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={handleClose}>
       <DialogContent className="max-w-2xl bg-background border shadow-lg" showOverlay>
         <DialogHeader>
-          <DialogTitle>Create New Event</DialogTitle>
+          <DialogTitle>Edit Event</DialogTitle>
           <DialogDescription>
-            Add a new event to your calendar
+            Update the event details
           </DialogDescription>
         </DialogHeader>
 
@@ -287,13 +312,13 @@ export function CreateEventDialog({ open, onOpenChange, initialStartTime, initia
             <Button
               type="button"
               variant="outline"
-              onClick={() => onOpenChange(false)}
-              disabled={isCreating}
+              onClick={handleClose}
+              disabled={isUpdating}
             >
               Cancel
             </Button>
-            <Button type="submit" disabled={isCreating}>
-              {isCreating ? 'Creating...' : 'Create Event'}
+            <Button type="submit" disabled={isUpdating}>
+              {isUpdating ? 'Updating...' : 'Update Event'}
             </Button>
           </DialogFooter>
         </form>

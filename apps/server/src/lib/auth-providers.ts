@@ -38,12 +38,14 @@ export const authProviders = (env: Record<string, string>): ProviderConfig[] => 
     config: {
       prompt: 'consent',
       accessType: 'offline',
+      includeGrantedScopes: true,
       scope: [
         'https://www.googleapis.com/auth/gmail.modify',
-        'https://www.googleapis.com/auth/userinfo.profile',
+        'https://www.googleapis.com/auth/userinfo.profile', 
         'https://www.googleapis.com/auth/userinfo.email',
         'https://www.googleapis.com/auth/calendar',
         'https://www.googleapis.com/auth/calendar.events',
+        'openid',
       ],
       clientId: env.GOOGLE_CLIENT_ID,
       clientSecret: env.GOOGLE_CLIENT_SECRET,
